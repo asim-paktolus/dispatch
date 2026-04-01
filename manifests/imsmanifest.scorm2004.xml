@@ -33,8 +33,8 @@
     <resource identifier="RES-1"
               type="webcontent"
               adlcp:scormType="sco"
-              href="launch.html">
-      <file href="launch.html"/>
+              href="index.html">
+      <file href="index.html"/>
       <file href="js/dispatch-config.js"/>
       <file href="js/scorm-api-universal.js"/>
       <file href="js/dispatch-launcher-universal.js"/>

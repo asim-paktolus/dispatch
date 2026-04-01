@@ -17,7 +17,7 @@ rm -rf "$staging"
 mkdir -p "$staging/js"
 
 cp -R "$root/js/" "$staging/"
-cp "$root/launch.html" "$staging/launch.html"
+cp "$root/index.html" "$staging/index.html"
 
 if [ "$target" = "scorm12" ]; then
   cp "$root/manifests/imsmanifest.scorm12.xml" "$staging/imsmanifest.xml"

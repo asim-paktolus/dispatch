@@ -17,7 +17,7 @@ if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
 New-Item -ItemType Directory -Force -Path $staging | Out-Null
 
 Copy-Item -Recurse -Force (Join-Path $root "js") (Join-Path $staging "js")
-Copy-Item -Force (Join-Path $root "launch.html") (Join-Path $staging "launch.html")
+Copy-Item -Force (Join-Path $root "index.html") (Join-Path $staging "index.html")
 
 if ($Target -eq "scorm12") {
   Copy-Item -Force (Join-Path $root "manifests/imsmanifest.scorm12.xml") (Join-Path $staging "imsmanifest.xml")
@@ -31,3 +31,4 @@ if (Test-Path $zip) { Remove-Item -Force $zip }
 Compress-Archive -Path (Join-Path $staging "*") -DestinationPath $zip -Force
 
 Write-Host "Built: $zip"
+
