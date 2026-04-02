@@ -129,22 +129,56 @@
     setStatus("Connecting to LMS…", "#f59e0b");
 
     var resolved = window.ScormUniversal.getApi();
-    if (!resolved.api) {
-      showError("SCORM API not found (neither API nor API_1484_11). This package must be launched by an LMS SCORM player.");
-      return;
+    var standalone = !resolved.api;
+    var localStore = {};
+
+    function callScorm(method, args) {
+      if (!standalone) {
+        return window.ScormUniversal.call(method, args);
+      }
+
+      var m = String(method || "");
+      var a = Array.isArray(args) ? args : [];
+      var key;
+
+      if (m === "Initialize" || m === "Commit" || m === "Terminate") {
+        return { ok: true, result: "true", errorCode: "0", errorString: "", diagnostic: "", version: "standalone" };
+      }
+      if (m === "GetLastError") {
+        return { ok: true, result: "0", errorCode: "0", errorString: "", diagnostic: "", version: "standalone" };
+      }
+      if (m === "GetErrorString" || m === "GetDiagnostic") {
+        return { ok: true, result: "", errorCode: "0", errorString: "", diagnostic: "", version: "standalone" };
+      }
+      if (m === "GetValue") {
+        key = String(a[0] || "");
+        return { ok: true, result: key && Object.prototype.hasOwnProperty.call(localStore, key) ? localStore[key] : "", errorCode: "0", errorString: "", diagnostic: "", version: "standalone" };
+      }
+      if (m === "SetValue") {
+        key = String(a[0] || "");
+        localStore[key] = String(a[1] || "");
+        return { ok: true, result: "true", errorCode: "0", errorString: "", diagnostic: "", version: "standalone" };
+      }
+
+      return { ok: false, result: null, errorCode: "101", errorString: "Unsupported method in standalone: " + m, diagnostic: "", version: "standalone" };
     }
 
-    var initialized = window.ScormUniversal.ensureInitialized();
-    if (!initialized) {
-      var err = window.ScormUniversal.call("GetLastError", []).result;
-      showError("Failed to initialize SCORM. LMS error: " + err);
-      return;
+    if (!standalone) {
+      var initialized = window.ScormUniversal.ensureInitialized();
+      if (!initialized) {
+        var err = window.ScormUniversal.call("GetLastError", []).result;
+        showError("Failed to initialize SCORM. LMS error: " + err);
+        return;
+      }
+    } else {
+      // Some LMSs don't expose SCORM API objects; still launch content and track to your backend.
+      setStatus("Standalone mode (no LMS SCORM API)", "#f59e0b");
     }
 
     var launchUrl = computeLaunchUrl();
     var allowedOrigins = getAllowedOrigins(launchUrl);
 
-    setStatus("Launching content… (" + window.ScormUniversal.version + ")", "#10b981");
+    setStatus("Launching content… (" + (standalone ? "standalone" : window.ScormUniversal.version) + ")", "#10b981");
 
     if (!launchUrl || launchUrl.indexOf("http") !== 0) {
       showError("Launch URL is invalid. Configure DISPATCH_SERVER_URL or pass cmi.launch_data.");
@@ -175,7 +209,7 @@
 
     var autoCommitTimer = null;
     var commitSeconds = Number(DISPATCH_AUTO_COMMIT_SECONDS || 0);
-    if (commitSeconds > 0) {
+    if (!standalone && commitSeconds > 0) {
       autoCommitTimer = setInterval(function () {
         window.ScormUniversal.call("Commit", [""]);
       }, commitSeconds * 1000);
@@ -185,7 +219,7 @@
       var id = data.id;
       var method = data.method;
       var args = data.args || [];
-      var res = window.ScormUniversal.call(method, args);
+      var res = callScorm(method, args);
       post(event.source || targetWindow, event.origin, {
         type: "scorm_rpc_result",
         id: id,
@@ -194,7 +228,7 @@
         errorCode: res.errorCode,
         errorString: res.errorString,
         diagnostic: res.diagnostic,
-        version: window.ScormUniversal.version,
+        version: standalone ? "standalone" : window.ScormUniversal.version,
       });
     }
 
@@ -215,7 +249,7 @@
         else if (method === "LMSGetDiagnostic") unified = "GetDiagnostic";
       }
 
-      var res2 = window.ScormUniversal.call(unified, args);
+      var res2 = callScorm(unified, args);
       post(event.source || targetWindow, event.origin, {
         type: data.type + "_result",
         id: id,
@@ -224,7 +258,7 @@
         errorCode: res2.errorCode,
         errorString: res2.errorString,
         diagnostic: res2.diagnostic,
-        version: window.ScormUniversal.version,
+        version: standalone ? "standalone" : window.ScormUniversal.version,
       });
     }
 
@@ -239,8 +273,10 @@
 
     function shutdown() {
       try { if (autoCommitTimer) clearInterval(autoCommitTimer); } catch (e6) {}
-      try { window.ScormUniversal.call("Commit", [""]); } catch (e7) {}
-      try { window.ScormUniversal.call("Terminate", [""]); } catch (e8) {}
+      if (!standalone) {
+        try { window.ScormUniversal.call("Commit", [""]); } catch (e7) {}
+        try { window.ScormUniversal.call("Terminate", [""]); } catch (e8) {}
+      }
     }
 
     window.addEventListener("beforeunload", shutdown);
