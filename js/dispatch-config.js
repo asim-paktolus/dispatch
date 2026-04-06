@@ -44,3 +44,9 @@ var DISPATCH_MODE = "iframe";
 
 // Auto-commit interval; set 0 to disable.
 var DISPATCH_AUTO_COMMIT_SECONDS = 30;
+
+// Tenant api-key for multi-tenant DB switching (Connection middleware).
+// Set this to the value of SCORM_DISPATCH_API_KEY from your server .env.
+// Leave empty if your server does not require it.
+var DISPATCH_API_KEY = "";
+
